@@ -1,15 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # CD — hangman-front  (build & push a GitHub Container Registry)
 # ═══════════════════════════════════════════════════════════════════════════
-# Workflow manual (workflow_dispatch). Cuando lo lanzas desde la pestaña
-# Actions de GitHub, construye la imagen Docker de hangman-front y la
-# publica en ghcr.io/<owner>/hangman-front con varios tags:
-#
-#   - sha-<corto>      → trazabilidad por commit
-#   - <branch>         → último build de la rama
-#   - latest           → solo si lanzamos desde main
-#   - <tag custom>     → opcional, pasado como input
-# ═══════════════════════════════════════════════════════════════════════════
 
 name: CD - hangman-front
 
