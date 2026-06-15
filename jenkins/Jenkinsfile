@@ -1,21 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Jenkinsfile — Ejercicio 1: CI básica de un proyecto Java + Gradle
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// Pipeline declarativa que descarga el código, lo compila y ejecuta los tests
-// unitarios. Asume que Jenkins corre sobre una imagen que YA tiene Java + Gradle
-// preinstalados (la imagen construida con `gradle.Dockerfile` del bootcamp).
-//
-// Plugins requeridos en Jenkins:
-//   - Pipeline
-//   - Git
-//   - JUnit (para publicar resultados de tests)
-//
-// Construcción de la imagen Jenkins-Gradle (referencia):
-//   docker build -t jenkins-gradle:lts -f gradle.Dockerfile .
-//   docker run -d --name jenkins -p 8080:8080 -p 50000:50000 \
-//     -v jenkins_home:/var/jenkins_home jenkins-gradle:lts
-// ═══════════════════════════════════════════════════════════════════════════
 
 pipeline {
 
