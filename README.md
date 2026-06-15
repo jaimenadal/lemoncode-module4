@@ -52,8 +52,7 @@ Todo el contenido de GitHub Actions está verificado contra el código real del 
 
 ## Captura de pruebas
 
-Las capturas de los pipelines verdes (Jenkins) y los workflows con estado success (GitHub Actions) van en `docs/` cuando se ejecute el entregable real.
+Las capturas de los pipelines verdes (Jenkins) y los workflows con estado success (GitHub Actions) van en `docs/` 
 
 ---
 
-> 千里の道も一歩から — *El camino de mil millas comienza con un solo paso.*
