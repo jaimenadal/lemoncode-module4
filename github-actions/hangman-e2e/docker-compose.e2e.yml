@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# docker-compose.e2e.yml — Stack para tests E2E
+# ═══════════════════════════════════════════════════════════════════════════
+# Levanta:
+#   - hangman-api    → escucha en :3000 dentro de la red, expuesto en :3001
+#   - hangman-front  → escucha en :8080 dentro de la red y expuesto al host
+#
+# Las imágenes (`hangman-api:e2e` y `hangman-front:e2e`) se construyen en el
+# workflow antes de levantar el stack. No usamos `build:` aquí para que el
+# compose sea simétrico con cómo se desplegará en GHCR en CD.
+#
+# Cypress corre en el host del runner (no como servicio) y se conecta a:
+#   - http://localhost:8080  (front)
+#   - http://localhost:3001  (api)
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+
+  api:
+    image: hangman-api:e2e
+    container_name: hangman-api
+    ports:
+      # host:container — el front llamará a localhost:3001 desde el navegador
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      # Usamos `node` para el healthcheck en lugar de wget/curl/nc: la API es
+      # una app Node, así que el binario `node` SIEMPRE está en la imagen,
+      # mientras que wget o nc pueden no estar (p.ej. en una base node:slim).
+      # Aceptamos cualquier respuesta HTTP (incluido 404): solo comprobamos que
+      # el servidor acepta la conexión y responde algo.
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000',r=>process.exit(0)).on('error',()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  front:
+    image: hangman-front:e2e
+    container_name: hangman-front
+    ports:
+      - "8080:8080"
+    environment:
+      # API_URL la consume entry-point.sh dentro del contenedor: sustituye el
+      # placeholder {{API_URL}} del bundle por este valor antes de arrancar
+      # nginx. Usamos localhost:3001 (no http://api:3000) porque quien hace la
+      # llamada es el navegador en el host del runner, no un proceso dentro de
+      # la red Docker — el front es una SPA, la petición sale del browser.
+      API_URL: http://localhost:3001
+    depends_on:
+      # service_started (no service_healthy): el front es nginx sirviendo
+      # estáticos, no necesita la API para arrancar — el navegador la llama
+      # en tiempo de test. Usar service_healthy aquí significaría que un
+      # healthcheck mal configurado dejaría el front sin arrancar nunca.
+      # La verificación real de que ambos responden la hace el step "Wait for
+      # services" del workflow con curl desde el host del runner.
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+networks:
+  default:
+    name: hangman-e2e

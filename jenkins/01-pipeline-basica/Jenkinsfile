@@ -1,0 +1,87 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Jenkinsfile — Ejercicio 1: CI básica de un proyecto Java + Gradle
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Pipeline declarativa que descarga el código, lo compila y ejecuta los tests
+// unitarios. Asume que Jenkins corre sobre una imagen que YA tiene Java + Gradle
+// preinstalados (la imagen construida con `gradle.Dockerfile` del bootcamp).
+//
+// Plugins requeridos en Jenkins:
+//   - Pipeline
+//   - Git
+//   - JUnit (para publicar resultados de tests)
+//
+// Construcción de la imagen Jenkins-Gradle (referencia):
+//   docker build -t jenkins-gradle:lts -f gradle.Dockerfile .
+//   docker run -d --name jenkins -p 8080:8080 -p 50000:50000 \
+//     -v jenkins_home:/var/jenkins_home jenkins-gradle:lts
+// ═══════════════════════════════════════════════════════════════════════════
+
+pipeline {
+
+    agent any
+
+    options {
+        // Cualquier stage que se quede colgado falla pasados 15 min
+        timeout(time: 15, unit: 'MINUTES')
+        // Prefijo de timestamp en cada línea de log: clave para debug
+        timestamps()
+        // Evita que dos ejecuciones del mismo job pisen el workspace
+        disableConcurrentBuilds()
+        // Guarda solo los últimos 10 builds, para no llenar disco
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        // Directorio del código fuente Java + Gradle dentro del repo del bootcamp.
+        // OJO: el proyecto Gradle (gradlew, build.gradle, src/) vive en el
+        // subdirectorio `calculator/`, no en la raíz de jenkins-resources.
+        SRC_DIR = '03-cd/exercises/jenkins-resources/calculator'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                // En producción real esto se hace con `checkout scm` cuando el
+                // Jenkinsfile vive en el propio repo. Aquí descargamos a mano
+                // porque el código fuente está en otro repo (el del bootcamp).
+                git branch: 'master',
+                    url:    'https://github.com/Lemoncode/bootcamp-devops-lemoncode.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                dir("${env.SRC_DIR}") {
+                    // El wrapper ./gradlew garantiza la versión de Gradle declarada
+                    // en el proyecto, independiente de la que tenga la máquina
+                    sh 'chmod +x ./gradlew'
+                    sh './gradlew --no-daemon compileJava'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir("${env.SRC_DIR}") {
+                    sh './gradlew --no-daemon test'
+                }
+            }
+            post {
+                // Siempre publicamos resultados, también si los tests fallan:
+                // así el reporte JUnit aparece en la UI de Jenkins
+                always {
+                    junit testResults: "${env.SRC_DIR}/build/test-results/test/*.xml",
+                          allowEmptyResults: true
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo '✅ Pipeline OK — código compila y todos los tests pasan' }
+        failure { echo '❌ Pipeline KO — revisa los logs del stage que ha roto' }
+        always  { echo "Build #${env.BUILD_NUMBER} terminado en ${currentBuild.durationString}" }
+    }
+}
