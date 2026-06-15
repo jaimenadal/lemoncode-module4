@@ -1,29 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Jenkinsfile — Ejercicio 2: build runner sobre imagen Docker de Gradle
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// Variante del ejercicio 1 donde NO dependemos de tener Gradle instalado en
-// el host Jenkins. Cada stage corre dentro de un contenedor efímero basado
-// en `gradle:6.6.1-jre14-openj9`, que ya trae Java 14 + Gradle 6.6.1.
-//
-// Esto requiere Docker-in-Docker:
-//
-//   docker run -d --name jenkins \
-//     -p 8080:8080 -p 50000:50000 \
-//     -v jenkins_home:/var/jenkins_home \
-//     -v /var/run/docker.sock:/var/run/docker.sock \
-//     jenkins/jenkins:lts
-//
-// Plugins necesarios en Jenkins:
-//   - Pipeline
-//   - Git
-//   - Docker
-//   - Docker Pipeline       ← el que provee la directiva `agent { docker { … } }`
-//   - JUnit
-//
-// Ventaja sobre el ejercicio 1: el agente Jenkins puede ser una imagen mínima.
-// Cada lenguaje/herramienta vive en su propia imagen de runner. Es el patrón
-// estándar en CI moderno (igual que `container:` en GitHub Actions).
 // ═══════════════════════════════════════════════════════════════════════════
 
 pipeline {
@@ -31,19 +8,6 @@ pipeline {
     agent {
         docker {
             image 'gradle:6.6.1-jre14-openj9'
-            // Argumentos pasados a `docker run`:
-            //   -u root:root → escribe libremente en el workspace que Jenkins monta.
-            //   Sin esto, el usuario `gradle` (UID 1000 dentro de la imagen) puede
-            //   colisionar con permisos del workspace montado desde el host.
-            //
-            //   -v gradle-cache:/home/gradle/.gradle → cachea dependencias entre
-            //   builds. Sin volumen persistente, cada build se descarga el
-            //   universo de Maven Central otra vez.
-            //
-            // OJO: como forzamos -u root:root, el HOME pasa a ser /root y Gradle
-            // buscaría /root/.gradle, ignorando el volumen montado en /home/gradle.
-            // Por eso fijamos GRADLE_USER_HOME explícito en el bloque environment,
-            // así el caché funciona independientemente del usuario del contenedor.
             args '-u root:root -v gradle-cache:/home/gradle/.gradle'
         }
     }
@@ -56,15 +20,8 @@ pipeline {
     }
 
     environment {
-        // El proyecto Gradle (gradlew, build.gradle, src/) vive en el
-        // subdirectorio `calculator/`, no en la raíz de jenkins-resources.
         SRC_DIR = '03-cd/exercises/jenkins-resources/calculator'
-        // Apaga el daemon de Gradle: en contenedores efímeros no aporta nada
-        // y consume RAM que no recuperaremos
         GRADLE_OPTS = '-Dorg.gradle.daemon=false'
-        // Fija dónde guarda Gradle su caché. Necesario porque al correr como
-        // root el HOME es /root, no /home/gradle, y sin esto el volumen de
-        // caché montado en /home/gradle/.gradle quedaría sin usar.
         GRADLE_USER_HOME = '/home/gradle/.gradle'
     }
 
@@ -72,11 +29,6 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                // Este stage corre DENTRO del contenedor gradle (agent a nivel
-                // pipeline). La imagen oficial gradle:6.6.1-jre14-openj9 incluye
-                // git, así que el step funciona. Si usaras una imagen mínima sin
-                // git, el checkout fallaría: en ese caso, haz el Checkout en un
-                // stage aparte con `agent any` y deja solo Compile/Test en Docker.
                 git branch: 'master',
                     url:    'https://github.com/Lemoncode/bootcamp-devops-lemoncode.git'
             }
@@ -85,9 +37,6 @@ pipeline {
         stage('Compile') {
             steps {
                 dir("${env.SRC_DIR}") {
-                    // Ya no usamos ./gradlew porque el contenedor ya trae
-                    // el binario `gradle` en el PATH (con la versión fijada
-                    // por el tag de la imagen: 6.6.1)
                     sh 'gradle compileJava'
                 }
             }
@@ -109,8 +58,8 @@ pipeline {
     }
 
     post {
-        success { echo '✅ Pipeline OK — runner Docker + Gradle 6.6.1 funcional' }
-        failure { echo '❌ Pipeline KO — revisa logs y permisos del socket Docker' }
+        success { echo 'Pipeline OK — runner Docker + Gradle 6.6.1 funcional' }
+        failure { echo 'Pipeline KO — revisa logs y permisos del socket Docker' }
         always  { echo "Build #${env.BUILD_NUMBER} en ${currentBuild.durationString}" }
     }
 }
