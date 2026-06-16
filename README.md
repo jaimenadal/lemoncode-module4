@@ -5,7 +5,6 @@ Entregable del **Bootcamp DevOps Lemoncode**. Pipelines con Jenkins (declarativo
 ```
 lemoncode_module4/
 ├── README.md                          ← estás aquí
-├── GUIA-PRUEBAS.md                    ← guía paso a paso para reproducir y probar todo
 ├── docs/                              ← capturas de evidencia
 ├── jenkins/
 │   ├── README.md                      ← montaje de Jenkins y ejecución de los pipelines
