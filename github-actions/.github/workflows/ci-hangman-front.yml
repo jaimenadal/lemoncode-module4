@@ -1,13 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # CI — hangman-front
 # ═══════════════════════════════════════════════════════════════════════════
-# Se dispara cuando se cumplen LAS DOS condiciones a la vez:
-#   1. Hay una pull request abierta (sincronizada o reabierta)
-#   2. Algún archivo de hangman-front/** ha cambiado
-#
-# El filtro de `paths` es lo que evita ejecutar este workflow para PRs que
-# solo tocan documentación o ficheros de otros directorios del repo.
-# ═══════════════════════════════════════════════════════════════════════════
 
 name: CI - hangman-front
 
@@ -16,15 +9,11 @@ on:
     branches: [main]
     paths:
       - 'hangman-front/**'
-      # El propio workflow también dispara: si tocamos el CI lo testeamos
       - '.github/workflows/ci-hangman-front.yml'
 
-# Permisos mínimos: solo lectura del código, no necesitamos más en CI
 permissions:
   contents: read
 
-# Si llegan varios pushes seguidos al PR, cancela los runs en curso y deja
-# vivo solo el último. Ahorra minutos de runner y feedback más rápido.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -32,10 +21,9 @@ concurrency:
 jobs:
   build-and-test:
     name: Build & unit tests
-    runs-on: ubuntu-24.04   # versión pineada — `ubuntu-latest` cambia sin avisar
+    runs-on: ubuntu-24.04   
     timeout-minutes: 10
 
-    # Todo el job ejecuta desde hangman-front/, así no repetimos working-directory
     defaults:
       run:
         working-directory: hangman-front
@@ -48,25 +36,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # Cache automático del directorio ~/.npm basado en el lockfile
           cache: 'npm'
           cache-dependency-path: hangman-front/package-lock.json
 
       - name: Install dependencies
-        # `npm ci` (no `npm install`):
-        #   - falla si el lockfile no coincide con package.json (build determinista)
-        #   - borra node_modules antes de instalar (entorno limpio)
-        #   - 2-3× más rápido en CI que `npm install`
         run: npm ci
 
       - name: Build
         run: npm run build
 
       - name: Unit tests
-        # El proyecto usa Jest con config propia: el script `test` es
-        # `jest -c ./config/test/jest.js`, que ejecuta una sola vez (el modo
-        # watch está en el script aparte `test:watch`). No hace falta pasar
-        # flags extra. CI=true lo exporta GitHub Actions de todas formas.
         run: npm test
         env:
           CI: true
