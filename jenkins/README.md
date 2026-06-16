@@ -93,28 +93,35 @@ Diferencia clave respecto al ejercicio 1: el host Jenkins ya **no necesita** Gra
 
 ### Preparación
 
-Jenkins necesita poder lanzar contenedores Docker. La forma estándar es **Docker-in-Docker** vía el socket del host:
+El host Jenkins necesita poder lanzar contenedores Docker (Docker-in-Docker vía el socket) y tener instalados los plugins **Docker** y **Docker Pipeline**. Todo eso está declarado en el [`Dockerfile`](02-pipeline-docker-runner/Dockerfile) y el [`docker-compose.yml`](02-pipeline-docker-runner/docker-compose.yml) de esta carpeta, de modo que no hay que configurar nada a mano tras arrancar.
+
+Desde `jenkins/02-pipeline-docker-runner/`:
 
 ```bash
-docker run -d --name jenkins \
-  -p 8080:8080 -p 50000:50000 \
-  -v jenkins_home:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  jenkins/jenkins:lts
+# El GID del socket Docker se lee del host (portable, no hardcodeado)
+export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+
+# Construye la imagen (Jenkins + Docker CLI + plugins) y levanta el contenedor
+docker compose up -d --build
 ```
 
-> El binding del socket Docker (`/var/run/docker.sock`) hace que el Jenkins de dentro pueda controlar el Docker del host. Es la forma sencilla, pero ojo: cualquiera con acceso a Jenkins tiene acceso de hecho a tu host. Para producción de verdad se prefiere un agente Kubernetes o un sidecar dind aislado.
+Esto:
+- Construye una imagen Jenkins con el **CLI de Docker** y los plugins **docker-plugin** + **docker-workflow** ya instalados (vía `jenkins-plugin-cli` en el Dockerfile).
+- Monta `/var/run/docker.sock` para el Docker-in-Docker.
+- Añade el GID dueño del socket al usuario `jenkins` con `group_add`, para que tenga permiso de hablar con el socket.
 
-Una vez dentro de Jenkins, instala estos plugins en *Manage Jenkins → Plugins*:
+Saca la contraseña inicial y desbloquea Jenkins:
+```bash
+docker logs jenkins2 2>&1 | grep -A2 "Please use the following password"
+```
 
-- **Docker** (`docker-plugin`)
-- **Docker Pipeline** (`docker-workflow`) — el que aporta la sintaxis `agent { docker { … } }`
-
-Reinicia Jenkins tras instalar.
+> Sobre el socket: montar `/var/run/docker.sock` hace que el Jenkins de dentro controle el Docker del host. Es lo cómodo para local, pero cualquiera con acceso a Jenkins tiene de hecho acceso al host. En producción se prefiere un agente Kubernetes o un sidecar dind aislado.
+>
+> Sobre los permisos del socket: la vía correcta es `group_add` con el GID real del socket (lo que hace el compose). La alternativa de `chmod 666 /var/run/docker.sock` es un agujero de seguridad y debe evitarse.
 
 ### Ejecución
 
-Idéntica al ejercicio 1, cambiando `Script Path` a `jenkins/02-pipeline-docker-runner/Jenkinsfile`.
+Crea el pipeline igual que en el ejercicio 1 (**New Item → Pipeline**, nombre `calculator-ci-docker`, Definition `Pipeline script`), pegando el contenido de [`02-pipeline-docker-runner/Jenkinsfile`](02-pipeline-docker-runner/Jenkinsfile). **Build Now**.
 
 La primera ejecución tarda más porque Docker descarga `gradle:6.6.1-jre14-openj9` (unos 500 MB). De la segunda en adelante usa la imagen cacheada y va rápido.
 
@@ -125,15 +132,3 @@ En ambos pipelines, tras el build:
 - Los tres stages aparecen en verde en la **Stage View** de la página del job.
 - El tab **Tests** muestra el resumen JUnit (qué tests han corrido y cuántos han pasado).
 - En el log de consola debe verse `BUILD SUCCESSFUL` de Gradle al final del stage *Unit Tests*.
-
-Si quieres provocar un fallo para verificar que el pipeline lo detecta, añade un test que falle a propósito en `src/test/java/...` y vuelve a lanzar el build. El stage *Unit Tests* debe quedar en rojo y el reporte JUnit listar el test fallido.
-
-## Decisiones de diseño
-
-**`--no-daemon`** en todas las invocaciones de Gradle: el daemon de Gradle solo aporta valor cuando el proceso vive (IDE, terminal interactiva). En CI cada build empieza con un workspace nuevo, así que el daemon no cachea nada útil y sí consume RAM que el agente no recuperará hasta que acabe.
-
-**Volumen `gradle-cache`** en el ejercicio 2: sin él, cada contenedor efímero se descarga todas las dependencias Maven Central otra vez (~ 2-3 minutos por build). Con el volumen, solo se descargan dependencias nuevas.
-
-**`reuseNode true`** en el agente Docker: dice a Jenkins que use el mismo workspace que ya tiene reservado para este job, en lugar de pedir un nodo nuevo solo para ese stage. Importa cuando hay stages anteriores que ya han producido artefactos.
-
-**`buildDiscarder`** con `numToKeepStr: '10'`: los logs y artefactos de Jenkins se acumulan rápido. Limitar a los últimos 10 builds del job evita que el `jenkins_home` crezca sin control.
