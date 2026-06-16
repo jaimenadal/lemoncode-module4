@@ -1,0 +1,82 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# E2E — hangman (front + api + Cypress)  [OPCIONAL]
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: E2E tests - hangman
+
+on:
+  workflow_dispatch:
+  schedule:
+
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Cypress E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build hangman-api image
+        run: docker build -t hangman-api:e2e ./hangman-api
+
+      - name: Build hangman-front image
+        run: docker build -t hangman-front:e2e ./hangman-front
+
+     
+      - name: Start stack (docker compose)
+        run: docker compose -f hangman-e2e/docker-compose.e2e.yml up -d
+
+      - name: Wait for services to be healthy
+
+        run: |
+          echo "Esperando a la API en :3001 ..."
+          # Para la API NO usamos curl -f: muchas APIs REST devuelven 404 en la
+          # raíz aunque estén perfectamente vivas, y -f haría fallar el wait.
+          # Basta con que el puerto acepte conexión y devuelva algo.
+          timeout 90 bash -c 'until curl -s -o /dev/null http://localhost:3001; do sleep 2; done'
+          echo "Esperando al front en :8080 ..."
+          # El front sí debe servir el index (200), aquí -f es correcto.
+          timeout 90 bash -c 'until curl -sf http://localhost:8080 >/dev/null; do sleep 2; done'
+          echo "Stack arriba"
+
+
+
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: hangman-e2e/e2e
+          install-command: npm ci
+          config: baseUrl=http://localhost:8080
+          browser: chrome
+
+
+      - name: Upload Cypress artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-failures
+          path: |
+            hangman-e2e/e2e/cypress/screenshots
+            hangman-e2e/e2e/cypress/videos
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose -f hangman-e2e/docker-compose.e2e.yml logs --no-color
+
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f hangman-e2e/docker-compose.e2e.yml down -v                                                                        
