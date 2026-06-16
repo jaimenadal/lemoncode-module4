@@ -85,6 +85,7 @@ Si todo va bien, los tres stages aparecen en verde y el reporte JUnit se publica
 
 ![Jenkins 1](../docs/jenkins1.png)
 
+![Jenkins 1-2](../docs/jenkins1-2.png)
 
 ## Ejercicio 2 — Pipeline con imagen Docker de Gradle como build runner
 
