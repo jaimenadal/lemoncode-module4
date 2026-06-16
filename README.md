@@ -6,7 +6,7 @@ Entregable del **Bootcamp DevOps Lemoncode**. Pipelines con Jenkins (declarativo
 lemoncode_module4/
 ├── README.md                          ← estás aquí
 ├── GUIA-PRUEBAS.md                    ← guía paso a paso para reproducir y probar todo
-├── docs/                              ← capturas de evidencia (ver "Capturas" abajo)
+├── docs/                              ← capturas de evidencia
 ├── jenkins/
 │   ├── README.md                      ← montaje de Jenkins y ejecución de los pipelines
 │   ├── 01-pipeline-basica/
@@ -45,9 +45,6 @@ La [`GUIA-PRUEBAS.md`](GUIA-PRUEBAS.md) contiene el paso a paso completo. En res
 
 **GitHub Actions** — los workflows van en `.github/workflows/` de un repositorio que contenga las carpetas `hangman-front/` (y `hangman-api/` + `hangman-e2e/e2e/` para los E2E). El CI se activa solo al abrir una PR que toque `hangman-front/`. El CD y el E2E se lanzan a mano desde la pestaña Actions (el E2E además tiene un cron diario).
 
-## Capturas de evidencia
-
-Las capturas viven en `docs/`, una subcarpeta por ejercicio. 
 
 ## Notas de implementación
 
