@@ -1,19 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # Dockerfile — hangman-front
 # ═══════════════════════════════════════════════════════════════════════════
-# Basado en el Dockerfile que trae el propio proyecto del bootcamp. El front
-# es React + TypeScript compilado con webpack; la salida va a dist/ y se sirve
-# con nginx en el puerto 8080.
-#
-# Mecanismo de API_URL (IMPORTANTE — es runtime, no build-time):
-#   1. En build, webpack hornea el literal "{{API_URL}}" en el bundle app*.js
-#      (vía el ARG API_URL={{API_URL}} de abajo + dotenv-webpack con systemvars).
-#   2. Al arrancar el contenedor, entry-point.sh hace un `sed` que sustituye
-#      ese placeholder por el valor real de la variable de entorno $API_URL.
-#   Por eso `docker run -e API_URL=http://localhost:3001 ...` funciona en runtime
-#   aunque sea una SPA estática: el placeholder se reemplaza justo antes de
-#   lanzar nginx.
-# ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Stage 1: build ────────────────────────────────────────────────────────
 FROM node:lts-alpine AS build
