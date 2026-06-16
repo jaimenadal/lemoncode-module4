@@ -1,15 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # CD — hangman-front  (build & push a GitHub Container Registry)
 # ═══════════════════════════════════════════════════════════════════════════
-# Workflow manual (workflow_dispatch). Cuando lo lanzas desde la pestaña
-# Actions de GitHub, construye la imagen Docker de hangman-front y la
-# publica en ghcr.io/<owner>/hangman-front con varios tags:
-#
-#   - sha-<corto>      → trazabilidad por commit
-#   - <branch>         → último build de la rama
-#   - latest           → solo si lanzamos desde main
-#   - <tag custom>     → opcional, pasado como input
-# ═══════════════════════════════════════════════════════════════════════════
 
 name: CD - hangman-front
 
@@ -22,19 +13,12 @@ on:
         type: string
         default: ''
 
-# Permisos:
-#   contents: read    → para hacer checkout del código
-#   packages: write   → para hacer push al Container Registry de GitHub (ghcr.io)
 permissions:
   contents: read
   packages: write
 
 env:
   REGISTRY: ghcr.io
-  # `github.repository_owner` es tu usuario u organización. GHCR exige el
-  # nombre de imagen en minúsculas; si tu usuario tiene mayúsculas (p.ej.
-  # "JaimeNadal"), no pasa nada: docker/metadata-action normaliza el nombre
-  # de la imagen a minúsculas automáticamente al generar los tags.
   IMAGE_NAME: ${{ github.repository_owner }}/hangman-front
 
 jobs:
@@ -47,7 +31,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Buildx habilita features avanzadas: multi-arch, cache remoto, BuildKit
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -56,15 +39,8 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          # GITHUB_TOKEN se genera automáticamente en cada run. No hace falta
-          # configurar un PAT (Personal Access Token) si los permissions son
-          # correctos arriba (packages: write).
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Genera el conjunto de tags y labels OCI estándar para la imagen.
-      # Es la pieza menos visible pero más útil: produce metadatos consistentes
-      # (org.opencontainers.image.source, .revision, etc.) que luego usan
-      # los scanners y los registries para mostrar info del build.
       - name: Image metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -84,8 +60,6 @@ jobs:
           push:    true
           tags:    ${{ steps.meta.outputs.tags }}
           labels:  ${{ steps.meta.outputs.labels }}
-          # Cache de capas Docker en el almacenamiento de GitHub Actions.
-          # `mode=max` cachea TODAS las capas intermedias, no solo la final.
           cache-from: type=gha
           cache-to:   type=gha,mode=max
 
