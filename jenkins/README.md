@@ -110,7 +110,7 @@ Esto:
 
 Saca la contraseña inicial y desbloquea Jenkins:
 ```bash
-docker logs jenkins 2>&1 | grep -A2 "Please use the following password"
+docker logs jenkins2 2>&1 | grep -A2 "Please use the following password"
 ```
 ### Ejecución
 
