@@ -83,6 +83,9 @@ Abre `http://localhost:8080`, desbloquea con la contraseña que aparece en `dock
 
 Si todo va bien, los tres stages aparecen en verde y el reporte JUnit se publica en la página del build.
 
+![Jenkins 1](../docs/jenkins1.png)
+
+
 ## Ejercicio 2 — Pipeline con imagen Docker de Gradle como build runner
 
 Jenkinsfile: [`02-pipeline-docker-runner/Jenkinsfile`](02-pipeline-docker-runner/Jenkinsfile)
@@ -120,8 +123,6 @@ La primera ejecución tarda más porque Docker descarga `gradle:6.6.1-jre14-open
 
 ## Verificar resultados
 
-En ambos pipelines, tras el build:
+![Jenkins 2](../docs/jenkins2.png)
+![Jenkins 2](../docs/jenkins2-1.png)
 
-- Los tres stages aparecen en verde en la **Stage View** de la página del job.
-- El tab **Tests** muestra el resumen JUnit (qué tests han corrido y cuántos han pasado).
-- En el log de consola debe verse `BUILD SUCCESSFUL` de Gradle al final del stage *Unit Tests*.
