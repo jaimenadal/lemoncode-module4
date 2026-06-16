@@ -4,6 +4,58 @@ Dos pipelines declarativas para un proyecto Java + Gradle (el código fuente es 
 
 Ambos pipelines hacen lo mismo —**Checkout → Compile → Unit Tests**— pero ejecutándose en agentes distintos. El primero asume que el host Jenkins ya tiene Java y Gradle; el segundo levanta un contenedor efímero con esas herramientas en cada build, dejando el host Jenkins limpio.
 
+## Notas del montaje (importante)
+
+Los dos ejercicios representan dos filosofías opuestas de **dónde viven las herramientas de build**, y por eso cada uno se ejecuta sobre un Jenkins distinto:
+
+| | Pipeline 1 | Pipeline 2 |
+|---|---|---|
+| Herramientas | En el agente Jenkins | En un contenedor efímero por build |
+| Imagen de Jenkins | `gradle.Dockerfile` del bootcamp (`lts-jdk17`) | `jenkins/jenkins:lts-jdk17` + Docker CLI + plugins |
+| Quién compila | El Java del propio Jenkins (Java 17) | El contenedor `gradle:6.6.1-jre14-openj9` (Java 14) |
+| ¿Le afecta la versión de Java de Jenkins? | **Sí** (necesita Java 17 para Gradle 7.6.6) | **No** (Jenkins solo orquesta) |
+
+**Pipeline 1 — único fix: el SHA del zip de Gradle.** El `gradle.Dockerfile` del bootcamp funciona con su `FROM jenkins/jenkins:lts-jdk17` tal cual: ese tag trae Java 17 (Temurin 17.0.18), que Gradle 7.6.6 soporta sin problema. El único cambio necesario es actualizar `GRADLE_SHA`: el `gradle-7.6.6-bin.zip` que sirve gradle.org hoy tiene un hash distinto al que traía el bootcamp, y la validación `sha256sum -c` del Dockerfile abortaba el build con `1 computed checksum did NOT match`. El SHA real actual está en [`01-pipeline-basica/gradle.Dockerfile`](01-pipeline-basica/gradle.Dockerfile), con el comando para regenerarlo documentado en sus comentarios.
+
+**Pipeline 2 — usa `lts-jdk17`, y da igual.** Como la compilación ocurre dentro del contenedor `gradle:6.6.1-jre14-openj9` (que trae su propio Java 14), la versión de Java del Jenkins host es irrelevante. 
+
+**Montaje del host del pipeline 2.** Todo el setup (Docker CLI + plugins) se declara en un [`Dockerfile`](02-pipeline-docker-runner/Dockerfile) propio, y el arranque (socket + permisos) en un [`docker-compose.yml`](02-pipeline-docker-runner/docker-compose.yml), de modo que el entorno es reproducible en lugar de configurarse a mano. El Dockerfile instala el CLI de Docker y los plugins:
+
+```dockerfile
+FROM jenkins/jenkins:lts-jdk17
+USER root
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+RUN jenkins-plugin-cli --plugins docker-plugin docker-workflow git
+USER jenkins
+```
+
+Y el compose lo levanta dando acceso al socket. El **GID del socket no se hardcodea**: se lee de una variable, así el montaje es portable entre máquinas:
+
+```bash
+export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+docker compose up -d --build
+```
+
+```yaml
+services:
+  jenkins:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: jenkins2
+    ports: ["8080:8080", "50000:50000"]
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID}"     # GID dueño de docker.sock (portable)
+volumes:
+  jenkins_home:
+```
+
+Por qué cada pieza:
+- **Docker CLI dentro del contenedor**: el socket por sí solo no basta; el plugin Docker Pipeline necesita el binario `docker` para hablar con él.
+- **`group_add` con el GID del socket**: da al usuario `jenkins` permiso sobre `/var/run/docker.sock`. 
+
+
 ## Ejercicio 1 — Pipeline básica con Gradle en la imagen Jenkins
 
 Jenkinsfile: [`01-pipeline-basica/Jenkinsfile`](01-pipeline-basica/Jenkinsfile)
