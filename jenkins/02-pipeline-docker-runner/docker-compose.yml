@@ -1,19 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # docker-compose.yml — levantar el host Jenkins del Ejercicio 2
 # ═══════════════════════════════════════════════════════════════════════════
-# Construye la imagen del Dockerfile de esta carpeta y arranca Jenkins con:
-#   - el socket Docker del host montado (Docker-in-Docker)
-#   - el grupo dueño del socket añadido al usuario jenkins (group_add)
-#
-# El GID del socket NO se hardcodea: se lee de la variable DOCKER_GID, así el
-# montaje es portable entre máquinas. Antes de levantar:
-#
-#   export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
-#   docker compose up -d --build
-#
-# Contraseña inicial de Jenkins:
-#   docker logs jenkins2 2>&1 | grep -A2 "Please use the following password"
-# ═══════════════════════════════════════════════════════════════════════════
 
 version: "3.8"
 
@@ -29,10 +16,8 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-      # Socket Docker del host → habilita Docker-in-Docker
       - /var/run/docker.sock:/var/run/docker.sock
-    # FIX permisos del socket Docker: añade el GID dueño de docker.sock
-    # (portable vía variable de entorno, no hardcodeado)
+    
     group_add:
       - "${DOCKER_GID}"
 
