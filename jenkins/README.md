@@ -44,7 +44,7 @@ services:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
-      - "${DOCKER_GID}"     # GID dueño de docker.sock (portable)
+      - "${DOCKER_GID}"     
 volumes:
   jenkins_home:
 ```
