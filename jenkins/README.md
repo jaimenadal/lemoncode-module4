@@ -2,8 +2,6 @@
 
 Dos pipelines declarativas para un proyecto Java + Gradle (el código fuente es el proyecto Spring Boot `calculator`, que vive en [`Lemoncode/bootcamp-devops-lemoncode`](https://github.com/Lemoncode/bootcamp-devops-lemoncode/tree/master/03-cd/exercises/jenkins-resources/calculator), bajo `03-cd/exercises/jenkins-resources/calculator`).
 
-Ambos pipelines hacen lo mismo —**Checkout → Compile → Unit Tests**— pero ejecutándose en agentes distintos. El primero asume que el host Jenkins ya tiene Java y Gradle; el segundo levanta un contenedor efímero con esas herramientas en cada build, dejando el host Jenkins limpio.
-
 ## Notas del montaje (importante)
 
 Los dos ejercicios representan dos filosofías opuestas de **dónde viven las herramientas de build**, y por eso cada uno se ejecuta sobre un Jenkins distinto:
