@@ -39,8 +39,6 @@ lemoncode_module4/
 
 ## Cómo verificar cada ejercicio
 
-La [`GUIA-PRUEBAS.md`](GUIA-PRUEBAS.md) contiene el paso a paso completo. En resumen:
-
 **Jenkins** — `cd jenkins/` y sigue el README. Hace falta Docker para construir la imagen Jenkins+Gradle (ejercicio 1) y para que Jenkins pueda lanzar contenedores vía Docker-in-Docker (ejercicio 2).
 
 **GitHub Actions** — los workflows van en `.github/workflows/` de un repositorio que contenga las carpetas `hangman-front/` (y `hangman-api/` + `hangman-e2e/e2e/` para los E2E). El CI se activa solo al abrir una PR que toque `hangman-front/`. El CD y el E2E se lanzan a mano desde la pestaña Actions (el E2E además tiene un cron diario).
