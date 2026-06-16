@@ -114,11 +114,6 @@ Saca la contraseña inicial y desbloquea Jenkins:
 ```bash
 docker logs jenkins2 2>&1 | grep -A2 "Please use the following password"
 ```
-
-> Sobre el socket: montar `/var/run/docker.sock` hace que el Jenkins de dentro controle el Docker del host. Es lo cómodo para local, pero cualquiera con acceso a Jenkins tiene de hecho acceso al host. En producción se prefiere un agente Kubernetes o un sidecar dind aislado.
->
-> Sobre los permisos del socket: la vía correcta es `group_add` con el GID real del socket (lo que hace el compose). La alternativa de `chmod 666 /var/run/docker.sock` es un agujero de seguridad y debe evitarse.
-
 ### Ejecución
 
 Crea el pipeline igual que en el ejercicio 1 (**New Item → Pipeline**, nombre `calculator-ci-docker`, Definition `Pipeline script`), pegando el contenido de [`02-pipeline-docker-runner/Jenkinsfile`](02-pipeline-docker-runner/Jenkinsfile). **Build Now**.
