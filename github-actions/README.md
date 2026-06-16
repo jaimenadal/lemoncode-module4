@@ -37,13 +37,18 @@ Esa combinación es el comportamiento que pide el enunciado. Las dos condiciones
 
 ### Probarlo
 
-1. Crea una rama `feature/test-ci`.
+1. Crea una rama `prueba-ci`.
 2. Cambia cualquier cosa en `hangman-front/` (un comentario en el README sirve).
 3. Empuja la rama y abre una PR contra `main`.
 
 El workflow aparece en *Checks* de la PR en cuanto se abre. Pasa por: install (`npm ci`) → build (`npm run build`) → unit tests (`npm test`).
 
-> Si modificas algo **fuera** de `hangman-front/` (por ejemplo, este propio README), el workflow no se dispara y la PR no muestra ningún check. Es lo esperado: el filtro `paths:` está haciendo su trabajo.
+![CI 1](../docs/ci.png)
+![CI 2](../docs/ci-1.png)
+![CI 3](../docs/ci-2.png)
+![CI 4](../docs/ci-3.png)
+![CI 5](../docs/ci-4.png)
+![CI 6](../docs/ci-5.png)
 
 ## CD — `cd-hangman-front.yml`
 
@@ -55,7 +60,7 @@ Se dispara manualmente desde la pestaña **Actions** de GitHub. Construye la ima
 2. (Opcional) introduce un tag adicional, por ejemplo `v0.1.0`.
 3. Pulsa **Run workflow** y espera al verde.
 
-Tras el éxito, la imagen aparece en la pestaña **Packages** de tu perfil/organización en GitHub. Para tirar de ella desde tu máquina:
+Si todo ok, la imagen aparece en la pestaña **Packages** de tu perfil/organización en GitHub. Para tirar de ella desde tu máquina:
 
 ```bash
 # Si el paquete está en modo privado (por defecto), hay que autenticarse antes.
@@ -66,7 +71,7 @@ docker pull ghcr.io/<tu-usuario>/hangman-front:latest
 docker run -d -p 8080:8080 -e API_URL=http://localhost:3001 ghcr.io/<tu-usuario>/hangman-front:latest
 ```
 
-> Si quieres que la imagen sea pública, ve a la pestaña *Packages*, abre el paquete, *Package settings* → *Change visibility* → *Public*. Después se puede `docker pull` sin autenticación.
+![CD](../docs/cd.png)
 
 ### Tags generados
 
@@ -82,11 +87,12 @@ El tag inmutable `sha-…` es el que conviene referenciar en producción (o mejo
 ## E2E — `e2e-hangman.yml`  (opcional 3)
 
 Construye front + api, levanta el stack con Docker Compose, espera a que ambos respondan, y dispara Cypress contra `http://localhost:8080`.
+![E2E](../docs/e2e.png)
 
 ### Disparadores
 
 - Manual desde la pestaña Actions.
-- Programado a las 06:00 UTC todos los días (smoke diario).
+- Programado a las 06:00 UTC todos los días.
 
 ### Probarlo en local antes de subirlo
 
@@ -108,24 +114,9 @@ cd ../..
 docker compose -f hangman-e2e/docker-compose.e2e.yml down -v
 ```
 
-### Sobre `npm run open` en CI
-
-El enunciado menciona `npm run open`, que arranca Cypress en modo interactivo (UI). Eso requiere un display gráfico y no funciona en un runner Linux headless. En el workflow he usado `cypress-io/github-action@v6`, que por defecto ejecuta `cypress run` (modo headless), que es lo apropiado para CI. Es la misma diferencia que entre `vim` y `vim -e` ejecutado dentro de un script.
-
-### Artefactos de fallo
-
-Si los tests caen, el workflow sube las capturas y vídeos de Cypress como artifact, descargable desde la propia run. También vuelca los logs de los contenedores. Sin esto, debugar un fallo flakey en CI es una pesadilla.
 
 ## Sobre el Dockerfile de hangman-front
 
 El [`Dockerfile`](hangman-front/Dockerfile) está basado en el que **ya trae el proyecto del bootcamp**, no es una plantilla genérica. Confirmado contra el código real del repo:
-
-- **Build runner**: webpack (no Vite ni CRA). La salida va a `dist/`, con bundles `app.[hash].js`, `vendor.[hash].js` y `runtime.[hash].js`.
-- **Runtime**: `nginx:1.19.0-alpine` sirviendo en el puerto 8080, con el `nginx.conf` del repo que ya incluye `try_files $uri $uri/ /index.html` (fallback SPA) y gzip.
-- **`API_URL` es runtime, no build-time**. Este es el detalle clave del proyecto:
-  1. En build, webpack hornea el literal `{{API_URL}}` dentro del bundle `app*.js`.
-  2. Al arrancar el contenedor, `entry-point.sh` ejecuta `sed -i "s|{{API_URL}}|$API_URL|g"` sobre los `app*.js` y luego lanza nginx.
-
-  Por eso `docker run -e API_URL=http://localhost:3001 ...` funciona aunque sea una SPA estática: el placeholder se reemplaza justo antes de servir.
 
 > **Para que la imagen funcione necesitas los archivos del repo** junto al Dockerfile: `nginx.conf` y `entry-point.sh`. Cópialos del `.start-code/hangman-front` del bootcamp al directorio de tu front. El Dockerfile de este entregable los espera en esas rutas.
