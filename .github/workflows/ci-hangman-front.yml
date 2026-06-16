@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CI — hangman-front
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: CI - hangman-front
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'hangman-front/**'
+      - '.github/workflows/ci-hangman-front.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & unit tests
+    runs-on: ubuntu-24.04   
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: hangman-front
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: hangman-front/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+        env:
+          CI: true
